@@ -42,9 +42,9 @@ Party clusters are free, limited-time Service Fabric clusters hosted on Azure. T
 
 For information about creating your own cluster, see [Create your first Service Fabric cluster on Azure](service-fabric-get-started-azure-cluster.md).
 
-> [!Note]
-> The web front-end service is configured to listen on port 8080 for incoming traffic. Make sure that port is open in your cluster. If you are using the Party Cluster, this port is open.
->
+
+The web front-end service is configured to listen on port 8080 for incoming traffic. Make sure that port is open in your cluster. If you are using the Party Cluster, this port is open.
+
 
 ### Deploy the application using Eclipse
 Now that the application and your cluster are ready, you can deploy it to the cluster directly from Eclipse.
