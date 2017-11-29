@@ -35,7 +35,12 @@ import microsoft.servicefabric.services.communication.runtime.CommunicationListe
 import microsoft.servicefabric.services.communication.client.ExceptionHandler;
 import microsoft.servicefabric.services.runtime.StatelessServiceContext;
 import microsoft.servicefabric.services.client.ServicePartitionKey;
+import microsoft.servicefabric.services.remoting.Service;
+import microsoft.servicefabric.services.remoting.client.ServiceProxyBase;
+import microsoft.servicefabric.services.communication.client.TargetReplicaSelector;
 import system.fabric.CancellationToken;
+
+import rpcmethods.VotingRPC;
 
 public class HttpCommunicationListener implements CommunicationListener {
 
@@ -44,31 +49,27 @@ public class HttpCommunicationListener implements CommunicationListener {
     private static final String HEADER_CONTENT_TYPE = "Content-Type";
     private static final int STATUS_OK = 200;
     private static final int STATUS_NOT_FOUND = 404; 
+    private static final int STATUS_ERROR = 500;
     private static final String RESPONSE_NOT_FOUND = "404 (Not Found) \n";
     private static final String MIME = "text/html";  
     private static final String ENCODING = "UTF-8";
     
     private static final String ROOT = "wwwroot/";
     private static final String FILE_NAME = "index.html";
-    
-    private com.sun.net.httpserver.HttpServer server;
-    private FabricServicePartitionClient<HttpCommunicationClient> client;
     private StatelessServiceContext context;
+    private com.sun.net.httpserver.HttpServer server;
     private ServicePartitionKey partitionKey;
     private final int port;
 
-    public HttpCommunicationListener(URI serviceName, StatelessServiceContext context, int port) {
-        List<ExceptionHandler> exceptionHandlers = new ArrayList<ExceptionHandler>(){{
-            add(new CommunicationExceptionHandler());
-        }}; 
+    public HttpCommunicationListener(StatelessServiceContext context, int port) {
         this.partitionKey = new ServicePartitionKey(0); 
-        this.client = new FabricServicePartitionClient<HttpCommunicationClient>(new HttpCommunicationClientFactory(null, exceptionHandlers), serviceName, this.partitionKey);
         this.context = context;
         this.port = port;
     }
 
     public void start() {
         try {
+            logger.log(Level.INFO, "Starting Server");
             server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress(this.port), 0);
         } catch (Exception ex) {
             logger.log(Level.SEVERE, null, ex);
@@ -87,9 +88,7 @@ public class HttpCommunicationListener implements CommunicationListener {
 	                  OutputStream os = t.getResponseBody();
 	                  os.write(RESPONSE_NOT_FOUND.getBytes());
 	                  os.close();
-	                } else {
-	                  // Object exists and is a file: accept with response code 200.
-	
+	                } else {	
 	                  Headers h = t.getResponseHeaders();
 	                  h.set(HEADER_CONTENT_TYPE, MIME);
 	                  t.sendResponseHeaders(STATUS_OK, 0);              
@@ -114,49 +113,13 @@ public class HttpCommunicationListener implements CommunicationListener {
         server.createContext("/getStatelessList", new HttpHandler() {
             @Override
             public void handle(HttpExchange t) {
-                try {
-                    String method = t.getRequestMethod();
-                    
+                try {                    
                     t.sendResponseHeaders(STATUS_OK,0);
                     OutputStream os = t.getResponseBody();
                     
-                    client.invokeWithRetryAsync((c) -> {
-                        CompletableFuture<Boolean> b = new CompletableFuture<>();
-                        String address = c.endPointAddress();
-                        int index = address.indexOf('/', 7);
-                        if (index != -1) {
-                            address = address.substring(0, index);
-                        }
-
-                        address = address + "/getList";
-                        URL clientUrl;
-                        try {
-                            clientUrl = new URL(address);
-                            HttpURLConnection conn = (HttpURLConnection) clientUrl.openConnection();
-                            conn.setRequestMethod(method);
-                            BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                            String line;
-                            HashMap<String,String> list = new HashMap<String,String>();
-                            
-                            while ((line = rd.readLine()) != null) {
-                            	String[] keyValueArray = line.split(",");
-                            	list.put(keyValueArray[0], keyValueArray[1]);
-                            }
-                            
-                            String json = new Gson().toJson(list);
-                            os.write(json.getBytes(ENCODING));
-                            rd.close();
-                            b.complete(true);
-                        } catch (FileNotFoundException ex) {
-                            logger.log(Level.WARNING, null, ex);
-                            b.complete(true);
-                        } catch (Exception ex) {
-                            logger.log(Level.SEVERE, null, ex);
-                            b.completeExceptionally(ex);
-                        }
-
-                        return b;
-                    }).get();
+                    HashMap<String,String> list = ServiceProxyBase.create(VotingRPC.class, new URI("fabric:/VotingApplication/VotingDataService"), partitionKey, TargetReplicaSelector.DEFAULT, "").getList().get();
+                    String json = new Gson().toJson(list);
+                    os.write(json.getBytes(ENCODING));                   
                     os.close();
                 } catch (Exception e) {
                     logger.log(Level.WARNING, null, e);
@@ -168,53 +131,28 @@ public class HttpCommunicationListener implements CommunicationListener {
             @Override
             public void handle(HttpExchange t) {
                 try {
-                    URI r = t.getRequestURI();
-                    Map<String, String> params = queryToMap(r.getQuery());
-                    String itemToRemove = params.get("item");
-                    
-                    String method = t.getRequestMethod();
-                    
-                    t.sendResponseHeaders(STATUS_OK,0);
                     OutputStream os = t.getResponseBody();
-                    client.invokeWithRetryAsync((c) -> {
-                        CompletableFuture<Boolean> b = new CompletableFuture<>();
-                        String address = c.endPointAddress();
-                        int index = address.indexOf('/', 7);
-                        if (index != -1) {
-                            address = address.substring(0, index);
-                        }
+                    URI r = t.getRequestURI();     
 
-                        address = address + "/removeItem?item="+itemToRemove;
-                        URL clientUrl;
-                        try {
-                            clientUrl = new URL(address);
-                            HttpURLConnection conn = (HttpURLConnection) clientUrl.openConnection();
-                            conn.setRequestMethod(method);
-                            BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                            String line;
-                            ArrayList<String> list = new ArrayList<String>();
-                            
-                            while ((line = rd.readLine()) != null) {
-                                list.add(line);
-                            }
-                            String json = new Gson().toJson(list);
-                            os.write(json.getBytes(ENCODING));
-                            rd.close();
-                            b.complete(true);
-                        } catch (FileNotFoundException ex) {
-                            logger.log(Level.WARNING, null, ex);
-                            b.complete(true);
-                        } catch (Exception ex) {
-                            logger.log(Level.SEVERE, null, ex);
-                            b.completeExceptionally(ex);
-                        }
+                    Map<String, String> params = queryToMap(r.getQuery());
+                    String itemToRemove = params.get("item");                    
+                    
+                    Integer num = ServiceProxyBase.create(VotingRPC.class, new URI("fabric:/VotingApplication/VotingDataService"), partitionKey, TargetReplicaSelector.DEFAULT, "").removeItem(itemToRemove).get();
+                    
+                    if (num != 1) 
+                    {
+                        t.sendResponseHeaders(STATUS_ERROR, 0);
+                    } else {
+                        t.sendResponseHeaders(STATUS_OK,0);
+                    }
 
-                        return b;
-                    }).get();
+                    String json = new Gson().toJson(num);
+                    os.write(json.getBytes(ENCODING));
                     os.close();
                 } catch (Exception e) {
                     logger.log(Level.WARNING, null, e);
                 }
+
             }
         });
         
@@ -226,45 +164,17 @@ public class HttpCommunicationListener implements CommunicationListener {
                     Map<String, String> params = queryToMap(r.getQuery());
                     String itemToAdd = params.get("item");
                     
-                    String method = t.getRequestMethod();
-                    
-                    t.sendResponseHeaders(STATUS_OK,0);
                     OutputStream os = t.getResponseBody();
-                    client.invokeWithRetryAsync((c) -> {
-                        CompletableFuture<Boolean> b = new CompletableFuture<>();
-                        String address = c.endPointAddress();
-                        int index = address.indexOf('/', 7);
-                        if (index != -1) {
-                            address = address.substring(0, index);
-                        }
+                    Integer num = ServiceProxyBase.create(VotingRPC.class, new URI("fabric:/VotingApplication/VotingDataService"), partitionKey, TargetReplicaSelector.DEFAULT, "").addItem(itemToAdd).get();
+                    if (num != 1) 
+                    {
+                        t.sendResponseHeaders(STATUS_ERROR, 0);
+                    } else {
+                        t.sendResponseHeaders(STATUS_OK,0);
+                    }
 
-                        address = address + "/addItem?item="+itemToAdd;
-                        URL clientUrl;
-                        try {
-                            clientUrl = new URL(address);
-                            HttpURLConnection conn = (HttpURLConnection) clientUrl.openConnection();
-                            conn.setRequestMethod(method);
-                            BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                            String line;
-                            ArrayList<String> list = new ArrayList<String>();
-                            
-                            while ((line = rd.readLine()) != null) {
-                                list.add(line);
-                            }
-                            String json = new Gson().toJson(list);
-                            os.write(json.getBytes(ENCODING));
-                            rd.close();
-                            b.complete(true);
-                        } catch (FileNotFoundException ex) {
-                            logger.log(Level.WARNING, null, ex);
-                            b.complete(true);
-                        } catch (Exception ex) {
-                            logger.log(Level.SEVERE, null, ex);
-                            b.completeExceptionally(ex);
-                        }
-
-                        return b;
-                    }).get();
+                    String json = new Gson().toJson(num);
+                    os.write(json.getBytes(ENCODING));
                     os.close();
                 } catch (Exception e) {
                     logger.log(Level.WARNING, null, e);
@@ -297,6 +207,7 @@ public class HttpCommunicationListener implements CommunicationListener {
     @Override
     public CompletableFuture<String> openAsync(CancellationToken cancellationToken) {
         this.start();
+                    logger.log(Level.INFO, "Opened Server");
         String publishUri = String.format("http://%s:%d/", this.context.getNodeContext().getIpAddressOrFQDN(), port);
         return CompletableFuture.completedFuture(publishUri);
     }

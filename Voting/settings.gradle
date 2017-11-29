@@ -1,3 +1,3 @@
+include ':VotingRPC'
 include 'VotingDataService'
-
 include 'VotingWeb'
