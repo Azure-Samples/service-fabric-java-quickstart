@@ -12,7 +12,7 @@ sourceSets {
 }
 
 clean.doFirst {
-    delete "${projectDir}/lib"
+    delete "${projectDir}/../lib"
     delete "${projectDir}/out"
     delete "${projectDir}/../VotingApplication/VotingDataServicePkg/Code/lib"
     delete "${projectDir}/../VotingApplication/VotingDataServicePkg/Code/VotingDataService.jar"
@@ -22,46 +22,45 @@ repositories {
     mavenCentral()
 }
 
-configurations {
-    azuresf
-}
-
 dependencies {
-     azuresf ('com.microsoft.servicefabric:sf-actors:1.0.0-preview1')   
-    compile fileTree(dir: 'lib', include: '*.jar')
+    compile ('com.microsoft.servicefabric:sf-actors:1.0.0-preview1')
+    compile project(':VotingRPC')
 }
 
-task explodeDeps(type: Copy, dependsOn:configurations.azuresf) { task ->
-    configurations.azuresf.filter { it.toString().contains("native") }.each{
-        from zipTree(it)
-    }
-    configurations.azuresf.filter { !it.toString().contains("native") }.each {
+task explodeDeps(type: Copy, dependsOn:configurations.compile) { task ->
+    configurations.compile.filter {!it.toString().contains("native")}.each{
         from it
     }
-    into "lib"
-    include "lib*.so", "*.jar"
-}
-
-jar {
-    manifest {
-    def mpath = configurations.azuresf.collect {'lib/'+it.getName()}.join (' ')
-    attributes(
-        'Main-Class': 'statefulservice.VotingDataServiceHost',
-        "Class-Path": mpath)
-    baseName "VotingDataService"
-
-    destinationDir = file('../VotingApplication/VotingDataServicePkg/Code/')
+    
+    configurations.compile.filter {it.toString().contains("native")}.each{
+        from zipTree(it)
     }
+    into "../lib/"
+    include "lib*.so", "*.jar"
 }
 
 compileJava.dependsOn(explodeDeps)
 
 task copyDeps<< {
     copy {
-        from("lib/")
+        from("../lib/")
         into("../VotingApplication/VotingDataServicePkg/Code/lib")
-        include('*')
+        include('lib*.so')
     }
+}
+
+jar {
+    from configurations.compile.collect {
+        (it.isDirectory() && !it.getName().contains("native")) ? it : zipTree(it)}
+	
+    manifest {
+        attributes('Main-Class': 'statefulservice.VotingDataServiceHost')
+
+        baseName "VotingDataService"
+        destinationDir = file('../VotingApplication/VotingDataServicePkg/Code/')
+    }
+
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA' 
 }
 
 defaultTasks 'clean', 'jar', 'copyDeps'

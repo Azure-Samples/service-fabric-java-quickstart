@@ -1,0 +1,41 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+sourceSets {
+  main {
+     java.srcDirs = ['src']
+     output.classesDir = 'out/classes'
+      resources {
+       srcDirs = ['src']
+     }
+   }
+}
+
+clean.doFirst {
+    delete "${projectDir}/out"
+    delete "${projectDir}/VotingRPC.jar"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile ('com.microsoft.servicefabric:sf-actors:1.0.0-preview1')
+}
+
+jar {
+    from configurations.compile.collect {
+        (it.isDirectory() && !it.getName().contains("native")) ? it : zipTree(it)}
+	
+    manifest {
+            attributes(
+            'Main-Class': 'rpcmethods.VotingRPC')
+        baseName "VotingRPC"
+        destinationDir = file('./')
+    }
+
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA' 
+}
+
+defaultTasks 'clean', 'jar'

@@ -1,0 +1,129 @@
+{  
+   "$schema":"http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+   "contentVersion":"1.0.0.0",
+   "parameters":{  
+      "namespaceName":{  
+         "type":"string",
+         "metadata":{  
+            "description":"Name of the EventHub namespace"
+         }
+      },
+      "eventHubName":{  
+         "type":"string",
+         "metadata":{  
+            "description":"Name of the Event Hub"
+         }
+      },
+      "consumerGroupName":{  
+         "type":"string",
+         "metadata":{  
+            "description":"Name of the Consumer Group"
+         }
+      },
+      "sendAuthorizationRuleName":{  
+        "type":"string",
+        "metadata":{  
+           "description":"Name of the Consumer Group"
+        }
+     },
+     "receiveAuthorizationRuleName":{  
+        "type":"string",
+        "metadata":{  
+           "description":"Name of the Consumer Group"
+        }
+     }
+   },
+   "variables":{
+      "defaultSASKeyName":"RootManageSharedAccessKey",
+      "authRuleResourceId":"[resourceId('Microsoft.EventHub/namespaces/authorizationRules', parameters('namespaceName'), variables('defaultSASKeyName'))]",
+      "senderResourceId":"[resourceId('Microsoft.EventHub/Namespaces/EventHubs/AuthorizationRules', parameters('namespaceName'), parameters('eventHubName'), parameters('sendAuthorizationRuleName'))]",
+      "receiverResourceId":"[resourceId('Microsoft.EventHub/Namespaces/EventHubs/AuthorizationRules', parameters('namespaceName'), parameters('eventHubName'), parameters('receiveAuthorizationRuleName'))]",
+      "ehVersion":"2017-04-01"
+   },
+   "resources":[  
+      {  
+         "apiVersion":"2017-04-01",
+         "name":"[parameters('namespaceName')]",
+         "type":"Microsoft.EventHub/Namespaces",
+         "location":"[resourceGroup().location]",
+         "sku":{  
+            "name":"Standard"
+         },
+		 "properties": {
+			"isAutoInflateEnabled": "true",
+			"maximumThroughputUnits": "20"
+			},
+         "resources":[  
+            {  
+               "apiVersion":"2017-04-01",
+               "name":"[parameters('eventHubName')]",
+               "type":"EventHubs",
+               "dependsOn":[  
+                  "[concat('Microsoft.EventHub/namespaces/', parameters('namespaceName'))]"
+               ],
+               "properties":{
+				  "messageRetentionInDays": "7",
+				  "partitionCount": "4"
+               },
+               "resources":[  
+                  {  
+                     "apiVersion":"2017-04-01",
+                     "name":"[parameters('consumerGroupName')]",
+                     "type":"ConsumerGroups",
+                     "dependsOn":[  
+                        "[parameters('eventHubName')]"
+                     ],
+                     "properties":{
+					 "userMetadata": "This is a Test Metadata"
+                     }
+                  },
+                  {
+                    "apiVersion":"2017-04-01",
+                    "name":"[parameters('sendAuthorizationRuleName')]",
+                    "type":"AuthorizationRules",
+                    "dependsOn":[  
+                       "[parameters('eventHubName')]"
+                    ],
+                    "properties": {
+                        "rights": [
+                          "Send"
+                        ]
+                      }
+                  },
+                  {
+                    "apiVersion":"2017-04-01",
+                    "name":"[parameters('receiveAuthorizationRuleName')]",
+                    "type":"AuthorizationRules",
+                    "dependsOn":[  
+                       "[parameters('eventHubName')]"
+                    ],
+                    "properties": {
+                        "rights": [
+                          "Listen"
+                        ]
+                      }
+                  }             
+               ]
+            }
+         ]
+      }
+   ],
+   "outputs":{  
+      "Sender Name":{  
+         "type":"string",
+         "value":"[parameters('sendAuthorizationRuleName')]"
+      },
+      "Sender Key":{  
+        "type":"string",
+        "value":"[listkeys(variables('senderResourceId'), variables('ehVersion')).primaryKey]"
+      },
+      "Receiver Name":{  
+        "type":"string",
+        "value":"[parameters('receiveAuthorizationRuleName')]"
+      },
+      "Receiver Key":{  
+         "type":"string",
+         "value":"[listkeys(variables('receiverResourceId'), variables('ehVersion')).primaryKey]"
+      }
+   }
+}

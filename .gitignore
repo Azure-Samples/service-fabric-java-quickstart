@@ -1,6 +1,40 @@
-<<<<<<< HEAD
-.metadata/
-JavaApplication/./metadata
-=======
-/.metadata/
->>>>>>> 98c8e0e... VotingApp
+**.gradle
+*.class
+**/bin
+**/lib
+**/build
+*.jar
+*.DS_Store
+[Oo]bj/
+[Bb]in/
+pkg/
+objd/
+TestResults/
+.nuget/
+*.sln.ide/
+_ReSharper.*/
+packages/
+.vs/
+*.user
+*.suo
+*.cache
+*.docstates
+_ReSharper.*
+nuget.exe
+.settings
+*.sln.ide
+
+# For Java
+.gradle
+*.class
+.classpath
+.project
+/**/build/**/*
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.dll
+*.so
+*.DS_Store
