@@ -80,13 +80,7 @@ Certificate thumbprint needs to be added to your application because it is using
 ### Deploy the application using Eclipse
 Now that the application and your cluster are ready, you can deploy it to the cluster directly from Eclipse.
 
-1. Import the project into eclipse by following the steps mentioned below:
-    - Import the project using "Import Projects form File System or Archive" wizard. 
-    - Build the project form the Service Fabric context menu. 
-    - Perform "Refresh Gradle Project" from Gradle context menu. 
-    - Configure your workspace/project ignore Forbidden reference errors. 
-
-2. Open the **Cloud.json** file under the **PublishProfiles** directory and fill in the `ConnectionIPOrURL` and `ConnectionPort` fields appropriately. An example is provided: 
+1. Open the **Cloud.json** file under the **PublishProfiles** directory and fill in the `ConnectionIPOrURL` and `ConnectionPort` fields appropriately. An example is provided: 
 
     ```bash
     {
