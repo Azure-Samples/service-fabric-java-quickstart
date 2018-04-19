@@ -13,10 +13,4 @@
   </CodePackage>
   <ConfigPackage Name="Config" Version="1.0.0" />
   <DataPackage Name="Data" Version="1.0.0" />
-  <Resources>
-      <Endpoints>
-         <Endpoint Name="ServiceEndpoint" Type="Input" Protocol="http" Port="4000" />
-         <Endpoint Name="ReplicatorEndpoint" />
-      </Endpoints>
-   </Resources>
  </ServiceManifest>
