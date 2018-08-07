@@ -15,7 +15,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-sfctl application provision --application-type-build-path VotingApplication 
+sfctl application provision --application-type-build-path VotingApplication --no-wait
 if [ $? -ne 0 ]; then
     echo "Application type registration failed."
     exit 1
