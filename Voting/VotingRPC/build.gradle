@@ -20,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    compile ('com.microsoft.servicefabric:sf-actors:1.0.0')
+    compile ('com.microsoft.servicefabric:sf-actors:1.0.1')
 }
 
 jar {
