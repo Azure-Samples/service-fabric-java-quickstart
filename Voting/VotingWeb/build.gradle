@@ -4,7 +4,6 @@ apply plugin: 'eclipse'
 sourceSets {
   main {
      java.srcDirs = ['src']
-     output.classesDir = 'out/classes'
       resources {
        srcDirs = ['src']
      }
@@ -39,11 +38,13 @@ task explodeDeps(type: Copy, dependsOn:configurations.compile) { task ->
     include "lib*.so", "*.jar"
 }
 
-task copyDeps<< {
-    copy {
-        from("../lib/")
-        into("../VotingApplication/VotingWebPkg/Code/lib")
-        include('lib*.so')
+task copyDeps{
+    doLast{
+        copy {
+            from("../lib/")
+            into("../VotingApplication/VotingWebPkg/Code/lib")
+            include('lib*.so')
+        }
     }
 }
 
