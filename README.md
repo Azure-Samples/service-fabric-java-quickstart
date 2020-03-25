@@ -5,6 +5,7 @@ languages:
 - java
 products:
 - azure
+- azure-service-fabric
 ---
 
 # Service Fabric Java Quickstart
